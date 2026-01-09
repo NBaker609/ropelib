@@ -1,8 +1,6 @@
-#include "rope.h"
+#include "../include/rope.h"
 
-const int MAX_LEAF_LEN = 100;
-
-rope::Rope::Rope()
+rope::RopeNode::RopeNode()
 {
 	leftNode = nullptr;
 	rightNode = nullptr;
@@ -11,16 +9,16 @@ rope::Rope::Rope()
 	leftLen = 0;
 }
 
-void rope::createRope(std::string &str, std::unique_ptr<Rope> &root, Rope *parent, size_t leftIndex, size_t rightIndex)
+void rope::createRopeNode(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex)
 {
-	root = std::make_unique<Rope>();
+	root = std::make_unique<RopeNode>();
 	root->parent = parent;
 	if (rightIndex - leftIndex > MAX_LEAF_LEN)
 	{
 		int median = (rightIndex + leftIndex) / 2;
 		root->leftLen = (rightIndex - leftIndex) / 2;
-		createRope(str, root->leftNode, root.get(), leftIndex, median);
-		createRope(str, root->rightNode, root.get(), median, rightIndex);
+		createRopeNode(str, root->leftNode, root.get(), leftIndex, median);
+		createRopeNode(str, root->rightNode, root.get(), median, rightIndex);
 		return;
 	}
 	else
@@ -32,7 +30,7 @@ void rope::createRope(std::string &str, std::unique_ptr<Rope> &root, Rope *paren
 	}
 }
 
-void rope::printRope(Rope *root)
+void rope::printRopeNode(RopeNode *root)
 {
 	if (root == nullptr)
 		return;
@@ -42,63 +40,28 @@ void rope::printRope(Rope *root)
 		std::cout << *root->data;
 		return;
 	}
-	printRope(root->leftNode.get());
-	printRope(root->rightNode.get());
+	printRopeNode(root->leftNode.get());
+	printRopeNode(root->rightNode.get());
 }
 
-std::unique_ptr<rope::Rope> rope::concatRope(std::unique_ptr<Rope> &leftNode, std::unique_ptr<Rope> &rightNode)
+void rope::adjustWeights(RopeNode *leaf, int32_t delta)
 {
-	std::unique_ptr<Rope> concattedRope = std::make_unique<Rope>();
-	concattedRope->leftNode = std::move(leftNode);
-	concattedRope->rightNode = std::move(rightNode);
-	concattedRope->leftLen = leftNode->leftLen;
-	return concattedRope;
-}
-
-std::optional<rope::LeafIndex> rope::getLeafAtIndexInfo(size_t i, Rope *root)
-{
-	if (root == nullptr)
-	{
-		return std::nullopt;
-	}
-	if (root->leftNode == nullptr && root->rightNode == nullptr)
-	{
-		if (i >= root->data->length())
-			return std::nullopt;
-		LeafIndex leafInfo;
-		leafInfo.characterAtIndex = root->data->at(i);
-		leafInfo.localIndex = i;
-		leafInfo.localNode = root;
-		return std::optional<LeafIndex>(leafInfo);
-	}
-	if (root->leftLen > i && root->leftNode.get() != nullptr)
-	{
-		return getLeafAtIndexInfo(i, root->leftNode.get());
-	}
-	else if (root->leftLen <= i && root->rightNode.get() != nullptr)
-	{
-		size_t newIndex = i - root->leftLen;
-		return getLeafAtIndexInfo(newIndex, root->rightNode.get());
-	}
-	return std::nullopt;
-}
-void rope::adjustWeights(Rope *root, int32_t delta)
-{
-	if (root  == nullptr)
+	if (leaf == nullptr)
 	{
 		return;
 	}
-	Rope* parent = root->parent;
-	if(parent == nullptr)
+	RopeNode *parent = leaf->parent;
+	if (parent == nullptr)
 	{
 		return;
 	}
 
-	if (root->parent->leftNode.get() == root)
+	if (leaf->parent->leftNode.get() == leaf)
 		parent->leftLen += delta;
-	adjustWeights(root->parent, delta);
+	adjustWeights(leaf->parent, delta);
 }
-void rope::insertAtIndex(size_t i, Rope *root, std::string str)
+
+void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 {
 	std::optional<LeafIndex> nodeAtIndex = getLeafAtIndexInfo(i, root);
 
@@ -108,12 +71,12 @@ void rope::insertAtIndex(size_t i, Rope *root, std::string str)
 		return;
 	}
 
-	Rope *leafNode = nodeAtIndex->localNode;
+	RopeNode *leafNode = nodeAtIndex->localNode;
 
 	if (nodeAtIndex->localIndex >= MAX_LEAF_LEN || leafNode->data->length() >= MAX_LEAF_LEN || leafNode->data->length() + str.length() >= MAX_LEAF_LEN)
 	{
-		std::unique_ptr leftSideOfSplitNode = std::make_unique<Rope>();
-		std::unique_ptr rightSideOfSplitNode = std::make_unique<Rope>();
+		std::unique_ptr leftSideOfSplitNode = std::make_unique<RopeNode>();
+		std::unique_ptr rightSideOfSplitNode = std::make_unique<RopeNode>();
 
 		leftSideOfSplitNode->parent = leafNode;
 		rightSideOfSplitNode->parent = leafNode;
@@ -128,7 +91,7 @@ void rope::insertAtIndex(size_t i, Rope *root, std::string str)
 		if (str.length() + rightSplitString.length() > MAX_LEAF_LEN)
 		{
 			std::string rightHandString = str + rightSplitString;
-			createRope(rightHandString, rightSideOfSplitNode, nodeAtIndex->localNode, 0, rightHandString.length());
+			createRopeNode(rightHandString, rightSideOfSplitNode, nodeAtIndex->localNode, 0, rightHandString.length());
 			leafNode->leftNode = std::move(leftSideOfSplitNode);
 			leafNode->rightNode = std::move(rightSideOfSplitNode);
 
@@ -150,4 +113,84 @@ void rope::insertAtIndex(size_t i, Rope *root, std::string str)
 	leafNode->data->insert(nodeAtIndex->localIndex, str);
 	leafNode->leftLen += str.length();
 	adjustWeights(leafNode->parent, str.length());
+}
+void rope::deleteAtIndex(size_t i, RopeNode* root)
+{
+	std::optional<LeafIndex> leafAtIndex = getLeafAtIndexInfo(i, root);
+	if(!leafAtIndex.has_value())
+		return;
+
+	RopeNode* leafNode = leafAtIndex.value().localNode;
+	leafNode->data->erase(leafAtIndex->localIndex, 1);
+	adjustWeights(leafNode, -1);
+}
+void rope::setMaxLeafLen(size_t n)
+{
+	MAX_LEAF_LEN = n;
+}
+std::unique_ptr<rope::RopeNode> rope::concatRopeNode(std::unique_ptr<RopeNode> &leftNode, std::unique_ptr<RopeNode> &rightNode)
+{
+	std::unique_ptr<RopeNode> concattedRopeNode = std::make_unique<RopeNode>();
+	concattedRopeNode->leftNode = std::move(leftNode);
+	concattedRopeNode->rightNode = std::move(rightNode);
+	concattedRopeNode->leftLen = leftNode->leftLen;
+	return concattedRopeNode;
+}
+
+std::optional<rope::LeafIndex> rope::getLeafAtIndexInfo(size_t i, RopeNode *root)
+{
+	if (root == nullptr)
+	{
+		return std::nullopt;
+	}
+	if (root->leftNode == nullptr && root->rightNode == nullptr)
+	{
+		if (i >= root->data->length())
+			return std::nullopt;
+		LeafIndex leafInfo;
+		leafInfo.characterAtIndex = root->data->at(i);
+		leafInfo.localIndex = i;
+		leafInfo.localNode = root;
+		return leafInfo;
+	}
+	if (root->leftLen > i && root->leftNode.get() != nullptr)
+	{
+		return getLeafAtIndexInfo(i, root->leftNode.get());
+	}
+	else if (root->leftLen <= i && root->rightNode.get() != nullptr)
+	{
+		size_t newIndex = i - root->leftLen;
+		return getLeafAtIndexInfo(newIndex, root->rightNode.get());
+	}
+	return std::nullopt;
+}
+
+std::optional<rope::LeafIndex> rope::getNextLeaf(RopeNode* leafToStart)
+{
+	RopeNode* parent = leafToStart->parent;
+	if(parent == nullptr) return std::nullopt;
+	if(parent->rightNode.get() == leafToStart)
+	{
+		return getNextLeaf(parent);
+	}
+	if(parent->leftNode.get() == leafToStart)
+	{
+		RopeNode* parentsRightChild = parent->rightNode.get();
+		
+		if(parentsRightChild == nullptr) 
+			return rope::getNextLeaf(parent);
+		
+		RopeNode* curNode = parentsRightChild;
+		while(curNode->data == nullptr)
+		{
+			curNode = curNode->leftNode.get();
+		}
+		LeafIndex leafInfoToReturn;
+
+		leafInfoToReturn.localNode = curNode;
+		leafInfoToReturn.characterAtIndex = curNode->data->at(0);
+		leafInfoToReturn.localIndex = 0;
+		return leafInfoToReturn;
+	}
+	return std::nullopt;
 }
