@@ -9,22 +9,29 @@ rope::RopeNode::RopeNode()
 	leftLen = 0;
 }
 
-void rope::createRopeNode(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex)
+void rope::createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex)
 {
 	root = std::make_unique<RopeNode>();
 	root->parent = parent;
 	if (rightIndex - leftIndex > MAX_LEAF_LEN)
 	{
-		int median = (rightIndex + leftIndex) / 2;
+		const size_t median = (rightIndex + leftIndex) / 2;
 		root->leftLen = (rightIndex - leftIndex) / 2;
-		createRopeNode(str, root->leftNode, root.get(), leftIndex, median);
-		createRopeNode(str, root->rightNode, root.get(), median, rightIndex);
+
+		std::string substr = str.substr(leftIndex, root->leftLen);
+		size_t n = std::count(substr.begin(), substr.end(), NEWLINE);
+		root->newLineCount = n;
+
+		createRope(str, root->leftNode, root.get(), leftIndex, median);
+		createRope(str, root->rightNode, root.get(), median, rightIndex);
 		return;
 	}
 	else
 	{
 		std::unique_ptr<std::string> data = std::make_unique<std::string>(str.substr(leftIndex, rightIndex - leftIndex));
 		root->leftLen = data->length();
+		size_t n = std::count(data->begin(), data->end(), NEWLINE);
+		root->newLineCount = n;
 		root->data = std::move(data);
 		return;
 	}
@@ -44,7 +51,7 @@ void rope::printRopeNode(RopeNode *root)
 	printRopeNode(root->rightNode.get());
 }
 
-void rope::adjustWeights(RopeNode *leaf, int32_t delta)
+void rope::adjustWeights(RopeNode *leaf, int32_t delta, int32_t newLineDelta)
 {
 	if (leaf == nullptr)
 	{
@@ -56,13 +63,18 @@ void rope::adjustWeights(RopeNode *leaf, int32_t delta)
 		return;
 	}
 
-	if (leaf->parent->leftNode.get() == leaf)
+	if (parent->leftNode.get() == leaf)
+	{
 		parent->leftLen += delta;
-	adjustWeights(leaf->parent, delta);
+		parent->newLineCount += newLineDelta;
+	}
+
+	adjustWeights(parent, delta, newLineDelta);
 }
 
 void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 {
+	size_t newLineDelta = std::count(str.begin(), str.end(), NEWLINE);
 	std::optional<LeafIndex> nodeAtIndex = getLeafAtIndexInfo(i, root);
 
 	if (!nodeAtIndex.has_value())
@@ -91,12 +103,12 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 		if (str.length() + rightSplitString.length() > MAX_LEAF_LEN)
 		{
 			std::string rightHandString = str + rightSplitString;
-			createRopeNode(rightHandString, rightSideOfSplitNode, nodeAtIndex->localNode, 0, rightHandString.length());
+			createRope(rightHandString, rightSideOfSplitNode, nodeAtIndex->localNode, 0, rightHandString.length());
 			leafNode->leftNode = std::move(leftSideOfSplitNode);
 			leafNode->rightNode = std::move(rightSideOfSplitNode);
 
 			leafNode->leftLen = leftSplitString.length();
-			adjustWeights(leafNode->parent, str.length());
+			adjustWeights(leafNode->parent, str.length(), newLineDelta);
 
 			return;
 		}
@@ -106,28 +118,105 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 		leafNode->rightNode = std::move(rightSideOfSplitNode);
 
 		leafNode->leftLen = leftSplitString.length();
-		adjustWeights(leafNode->parent, str.length());
+		adjustWeights(leafNode->parent, str.length(), newLineDelta);
 
 		return;
 	}
 	leafNode->data->insert(nodeAtIndex->localIndex, str);
 	leafNode->leftLen += str.length();
-	adjustWeights(leafNode->parent, str.length());
+	adjustWeights(leafNode->parent, str.length(), newLineDelta);
 }
-void rope::deleteAtIndex(size_t i, RopeNode* root)
+void rope::deleteAtIndex(size_t i, RopeNode *root)
 {
 	std::optional<LeafIndex> leafAtIndex = getLeafAtIndexInfo(i, root);
-	if(!leafAtIndex.has_value())
+	if (!leafAtIndex.has_value())
 		return;
 
-	RopeNode* leafNode = leafAtIndex.value().localNode;
+	RopeNode *leafNode = leafAtIndex.value().localNode;
+	int weightDelta = -1;
+	int newLineDelta = 0;
+	if (leafAtIndex->characterAtIndex == NEWLINE)
+		newLineDelta = -1;
+	
+	adjustWeights(leafNode, weightDelta, newLineDelta);
 	leafNode->data->erase(leafAtIndex->localIndex, 1);
-	adjustWeights(leafNode, -1);
+	if(leafNode->data->empty())
+	{
+		if(leafNode->parent->leftNode.get() == leafNode)
+		{
+			RopeNode* parent = leafNode->parent;
+			RopeNode* rightChild = leafNode->parent->rightNode.get();
+			parent->data = std::move(rightChild->data);
+			parent->leftLen = parent->data->length();
+			parent->newLineCount = rightChild->newLineCount;
+			parent->leftNode.release();
+			parent->rightNode.release();
+		}
+		if(leafNode->parent->rightNode.get() == leafNode)
+		{
+			RopeNode* parent = leafNode->parent;
+			RopeNode* leftChild = leafNode->parent->leftNode.get();
+			parent->data = std::move(leftChild->data);
+			parent->leftLen = leftChild->leftLen;
+			parent->newLineCount = leftChild->newLineCount;
+			parent->leftNode.release();
+			parent->rightNode.release();
+		}
+	}
 }
 void rope::setMaxLeafLen(size_t n)
 {
-	MAX_LEAF_LEN = n;
+	rope::MAX_LEAF_LEN = n;
 }
+
+std::optional<std::string> rope::getLine(size_t i, RopeNode *root)
+{
+
+	std::optional<LeafIndex> lineStartingPoint = getNewLineAtIndex(i, root);
+
+	if (!lineStartingPoint.has_value())
+	{
+		return std::nullopt;
+	}
+
+	int index = 0;
+	if (lineStartingPoint->characterAtIndex == NEWLINE)
+		index = lineStartingPoint->localIndex + 1;
+	else
+		index = lineStartingPoint->localIndex;
+
+	RopeNode *curNode = lineStartingPoint->localNode;
+	std::string lineString("");
+
+	while (true)
+	{
+		if (curNode->data->empty())
+		{
+			std::optional<LeafIndex> nextNode = getNextLeaf(curNode);
+			if (!nextNode.has_value())
+				return lineString;
+			index = 0;
+			curNode = nextNode.value().localNode;
+		}
+		if (index >= curNode->data->length())
+		{
+			std::optional<LeafIndex> nextNode = getNextLeaf(curNode);
+			if (!nextNode.has_value())
+				return lineString;
+			index = 0;
+			curNode = nextNode.value().localNode;
+		}
+		if (curNode->data->at(index) == NEWLINE)
+		{
+			return lineString;
+		}
+
+		lineString.push_back(curNode->data->at(index));
+		index++;
+	}
+	return lineString;
+}
+
 std::unique_ptr<rope::RopeNode> rope::concatRopeNode(std::unique_ptr<RopeNode> &leftNode, std::unique_ptr<RopeNode> &rightNode)
 {
 	std::unique_ptr<RopeNode> concattedRopeNode = std::make_unique<RopeNode>();
@@ -165,32 +254,107 @@ std::optional<rope::LeafIndex> rope::getLeafAtIndexInfo(size_t i, RopeNode *root
 	return std::nullopt;
 }
 
-std::optional<rope::LeafIndex> rope::getNextLeaf(RopeNode* leafToStart)
+std::optional<rope::LeafIndex> rope::getNewLineAtIndex(size_t i, RopeNode *root)
 {
-	RopeNode* parent = leafToStart->parent;
-	if(parent == nullptr) return std::nullopt;
-	if(parent->rightNode.get() == leafToStart)
+	if (root == nullptr)
+	{
+		return std::nullopt;
+	}
+
+	if (root->leftNode == nullptr && root->rightNode == nullptr)
+	{
+		if (i > root->newLineCount)
+			return std::nullopt;
+
+		int numOfNewLinesFound = 0;
+		for (size_t index = 0; index < root->data->length(); ++index)
+		{
+			if (root->data->at(index) == NEWLINE)
+			{
+				numOfNewLinesFound++;
+			}
+			if (numOfNewLinesFound == i)
+			{
+				numOfNewLinesFound = index;
+				break;
+			}
+		}
+
+		LeafIndex newLineLocationInfo;
+		newLineLocationInfo.localIndex = numOfNewLinesFound;
+		newLineLocationInfo.localNode = root;
+		newLineLocationInfo.characterAtIndex = root->data->at(numOfNewLinesFound);
+		return newLineLocationInfo;
+	}
+	if (root->newLineCount >= i && root->leftNode.get() != nullptr)
+	{
+		return getNewLineAtIndex(i, root->leftNode.get());
+	}
+	else if (root->newLineCount < i && root->rightNode.get() != nullptr)
+	{
+		size_t newIndex = i - root->newLineCount;
+		return getNewLineAtIndex(newIndex, root->rightNode.get());
+	}
+
+	return std::nullopt;
+}
+
+std::optional<rope::LeafIndex> searchDownLeftTree(rope::RopeNode *nodeToStart)
+{
+	rope::RopeNode *curNode = nodeToStart;
+	while (curNode && curNode->data == nullptr)
+	{
+		if(curNode->leftNode)
+			curNode = curNode->leftNode.get();
+		else	
+			curNode = curNode->rightNode.get();
+	}
+	if (!curNode)
+	{
+		return std::nullopt;
+	}
+		
+
+	rope::LeafIndex leafInfoToReturn;
+	leafInfoToReturn.localNode = curNode;
+	leafInfoToReturn.characterAtIndex = curNode->data->at(0);
+	leafInfoToReturn.localIndex = 0;
+
+	return leafInfoToReturn;
+}
+std::optional<rope::LeafIndex> rope::getNextLeaf(const RopeNode *leafToStart)
+{
+	RopeNode *parent = leafToStart->parent;
+	if (parent == nullptr)
+		return std::nullopt;
+	if (parent->rightNode.get() == leafToStart)
 	{
 		return getNextLeaf(parent);
 	}
-	if(parent->leftNode.get() == leafToStart)
+	if (parent->leftNode.get() == leafToStart)
 	{
-		RopeNode* parentsRightChild = parent->rightNode.get();
-		
-		if(parentsRightChild == nullptr) 
-			return rope::getNextLeaf(parent);
-		
-		RopeNode* curNode = parentsRightChild;
-		while(curNode->data == nullptr)
-		{
-			curNode = curNode->leftNode.get();
-		}
-		LeafIndex leafInfoToReturn;
+		RopeNode *parentsRightChild = parent->rightNode.get();
 
-		leafInfoToReturn.localNode = curNode;
-		leafInfoToReturn.characterAtIndex = curNode->data->at(0);
-		leafInfoToReturn.localIndex = 0;
-		return leafInfoToReturn;
+		if (parentsRightChild == nullptr)
+			return rope::getNextLeaf(parent);
+
+		std::optional<LeafIndex> leafWalkedDownLeft = searchDownLeftTree(parentsRightChild);
+		while (true)
+		{
+			if (!leafWalkedDownLeft.has_value())
+			{
+				if(parentsRightChild->rightNode == nullptr)
+					return std::nullopt;
+				parentsRightChild = parentsRightChild->rightNode.get();
+				leafWalkedDownLeft = searchDownLeftTree(parentsRightChild);
+			}
+			else
+			{
+				return leafWalkedDownLeft;
+			}
+		}
+
+		return leafWalkedDownLeft;
 	}
 	return std::nullopt;
 }
