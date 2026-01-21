@@ -31,7 +31,10 @@ void rope::createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNod
 std::string rope::getRopeAsString(RopeNode *root)
 {
 	std::string ropeString("");
-	RopeNode* curNode = getLeafAtIndexInfo(0, root).value().localNode;
+	std::optional<LeafIndex> opt = getLeafAtIndexInfo(0, root);
+	if(!opt.has_value())
+		return ropeString;
+	RopeNode* curNode = opt.value().localNode;
 	while (true)
 	{
 		ropeString.append(*curNode->data);
@@ -89,7 +92,6 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 		std::string leftSplitString("");
 		std::string rightSplitString("");
 		
-		leafNode->data->insert(0, " "); // <- so if for whatever reason the leafNode we are splitting on contains an empty string, we append a space at the beginning so substr has no chance of breaking
 		leftSplitString = leafNode->data->substr(0, nodeAtIndex->localIndex);
 		leftSideOfSplitNode->leftLen = leftSplitString.length();
 		rightSplitString = leafNode->data->substr(nodeAtIndex->localIndex, leafNode->data->length());
@@ -105,7 +107,7 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 			leafNode->rightNode = std::move(rightSideOfSplitNode);
 
 			leafNode->leftLen = leftSplitString.length();
-			adjustWeights(leafNode->parent, str.length(), newLineDelta);
+			adjustWeights(leafNode, str.length(), newLineDelta);
 
 			return;
 		}
@@ -115,13 +117,13 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 		leafNode->rightNode = std::move(rightSideOfSplitNode);
 
 		leafNode->leftLen = leftSplitString.length();
-		adjustWeights(leafNode->parent, str.length(), newLineDelta);
+		adjustWeights(leafNode, str.length(), newLineDelta);
 
 		return;
 	}
 	leafNode->data->insert(nodeAtIndex->localIndex, str);
 	leafNode->leftLen += str.length();
-	adjustWeights(leafNode->parent, str.length(), newLineDelta);
+	adjustWeights(leafNode, str.length(), newLineDelta);
 }
 void rope::deleteAtIndex(size_t i, RopeNode *root)
 {
@@ -129,7 +131,7 @@ void rope::deleteAtIndex(size_t i, RopeNode *root)
 	if (!leafAtIndex.has_value())
 		return;
 
-	const RopeNode *leafNode = leafAtIndex.value().localNode;
+	RopeNode *leafNode = leafAtIndex.value().localNode;
 	int weightDelta = -1;
 	int newLineDelta = 0;
 	if (leafAtIndex->characterAtIndex == NEWLINE)
@@ -145,7 +147,7 @@ void rope::deleteAtIndex(size_t i, RopeNode *root)
 		}
 		else if(leafNode->parent->leftNode.get() == leafNode)
 		{
-			RopeNode* parent {leafNode->parent};
+			RopeNode* parent = leafNode->parent;
 			RopeNode* rightChild = leafNode->parent->rightNode.get();
 			parent->move(rightChild);
 			return;
@@ -229,10 +231,11 @@ std::optional<rope::LeafIndex> rope::getLeafAtIndexInfo(size_t i, RopeNode *root
 	}
 	if (root->leftNode == nullptr && root->rightNode == nullptr)
 	{
-		if (i >= root->data->length())
+		if (i >= root->data->length() && i != 0)
 			return std::nullopt;
 		LeafIndex leafInfo;
-		leafInfo.characterAtIndex = root->data->at(i);
+		if(i != 0)
+			leafInfo.characterAtIndex = root->data->at(i);
 		leafInfo.localIndex = i;
 		leafInfo.localNode = root;
 		return leafInfo;
