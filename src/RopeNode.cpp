@@ -11,7 +11,7 @@ rope::RopeNode::RopeNode()
 
 void rope::RopeNode::move(RopeNode* node)
 {
-    std::unique_ptr<RopeNode>* childPtr = nullptr;
+    std::unique_ptr<RopeNode>* childPtr {nullptr};
     node->parent = this->parent;
     if(node == leftNode.get())
         childPtr = &leftNode;

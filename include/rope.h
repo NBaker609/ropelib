@@ -8,12 +8,12 @@
 namespace rope
 {
 	#ifdef _WIN32 
-		inline const char NEWLINE = '\r\n';
+		inline const char NEWLINE {'\r\n'};
 	#elifdef __linux__
-		inline const char  NEWLINE =  '\n';
+		inline const char  NEWLINE {'\n'};
 	#endif
 
-	inline size_t MAX_LEAF_LEN = 100;
+	inline size_t MAX_LEAF_LEN {100};
 
 	class RopeNode
 	{
@@ -45,7 +45,7 @@ namespace rope
 	std::unique_ptr<RopeNode> concatRopeNode(std::unique_ptr<RopeNode> &leftNode, std::unique_ptr<RopeNode> &rightNode);
 	std::optional<std::string> getLine(size_t i, RopeNode* root);
 	std::optional<LeafIndex> getLeafAtIndexInfo(size_t i, RopeNode *root);
-	std::optional<LeafIndex> getNextLeaf(const RopeNode* leafToStart);
+	std::optional<LeafIndex> getNextLeaf(RopeNode* leafToStart);
 	std::optional<LeafIndex> getNewLineAtIndex(size_t i, RopeNode* root);
 	
 }
