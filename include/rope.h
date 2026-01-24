@@ -43,6 +43,7 @@ namespace rope
 	void setMaxLeafLen(size_t n);
 	
 	std::string getRopeAsString(RopeNode *root);
+	std::string getRestOfLine(size_t lineNum, RopeNode* root);
 	
 	std::unique_ptr<RopeNode> concatRopeNode(std::unique_ptr<RopeNode> &leftNode, std::unique_ptr<RopeNode> &rightNode);
 	

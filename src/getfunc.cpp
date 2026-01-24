@@ -1,6 +1,34 @@
 #include "../include/rope.h"
 #include "include/util.h"
 // All get functions
+std::string rope::getRestOfLine(size_t index, RopeNode* root)
+{
+	std::optional<LeafIndex> opt {getLeafAtIndexInfo(index, root)};
+	if(!opt.has_value()) return "";
+
+	LeafIndex pos {opt.value()};
+	char curChar {pos.characterAtIndex};
+	size_t curIndex {pos.localIndex};
+	
+	std::string strBuilt {""};
+	while(true)
+	{
+		if(curIndex >= pos.localNode->data->length())
+		{
+			std::optional<LeafIndex> opt {getNextLeaf(pos.localNode)};
+			if(!opt.has_value()) return strBuilt;
+			pos = opt.value();
+			curIndex = 0;
+		}
+		curChar = pos.localNode->data->at(curIndex);
+		if(curChar == NEWLINE) break;
+		strBuilt.push_back(curChar);
+		curIndex++;
+	}
+	return strBuilt;
+}
+
+
 std::string rope::getRopeAsString(RopeNode *root)
 {
 	std::string ropeString {""};
