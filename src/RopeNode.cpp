@@ -9,6 +9,7 @@ rope::RopeNode::RopeNode()
 	leftLen = 0;
 }
 
+
 void rope::RopeNode::move(RopeNode* node)
 {
     std::unique_ptr<RopeNode>* childPtr {nullptr};

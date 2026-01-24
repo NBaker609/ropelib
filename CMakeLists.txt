@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(RopeLib VERSION 1.0.0)
 add_library(rope STATIC)
 
-target_sources(rope PRIVATE src/rope.cpp PRIVATE src/RopeNode.cpp)
+target_sources(rope PRIVATE src/include/util.cpp PRIVATE src/RopeNode.cpp PRIVATE src/core.cpp  PRIVATE src/io.cpp PRIVATE src/getfunc.cpp )

@@ -36,13 +36,16 @@ namespace rope
 		char characterAtIndex;
 		RopeNode *localNode;
 	};
+
 	void createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex);
-	void adjustWeights(const RopeNode *root, int32_t delta, int32_t newLineDelta);
 	void insertAtIndex(size_t i, RopeNode *root, std::string str);
 	void deleteAtIndex(size_t i, RopeNode *root);
 	void setMaxLeafLen(size_t n);
+	
 	std::string getRopeAsString(RopeNode *root);
+	
 	std::unique_ptr<RopeNode> concatRopeNode(std::unique_ptr<RopeNode> &leftNode, std::unique_ptr<RopeNode> &rightNode);
+	
 	std::optional<std::string> getLine(size_t i, RopeNode* root);
 	std::optional<LeafIndex> getLeafAtIndexInfo(size_t i, RopeNode *root);
 	std::optional<LeafIndex> getNextLeaf(RopeNode* leafToStart);
