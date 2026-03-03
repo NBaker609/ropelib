@@ -7,11 +7,7 @@
 #include <algorithm>
 namespace rope
 {
-	#ifdef _WIN32 
-		inline const char NEWLINE = '\r\n';
-	#elifdef __linux__
-		inline const char  NEWLINE = '\n';
-	#endif
+	inline const char  NEWLINE = '\n';
 
 	inline size_t MAX_LEAF_LEN {100};
 
