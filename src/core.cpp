@@ -10,7 +10,7 @@ void rope::createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNod
 		root->leftLen = (rightIndex - leftIndex) / 2;
 
 		const std::string substr {str.substr(leftIndex, root->leftLen)};
-		const size_t n {std::count(substr.begin(), substr.end(), NEWLINE)};
+		const int64_t n {std::count(substr.begin(), substr.end(), NEWLINE)};
 		root->newLineCount = n;
 
 		createRope(str, root->leftNode, root.get(), leftIndex, median);
@@ -22,7 +22,7 @@ void rope::createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNod
 		size_t lengthOfData {rightIndex - leftIndex};
 		std::unique_ptr<std::string> data {std::make_unique<std::string>(str.substr(leftIndex, rightIndex - leftIndex))};
 		root->leftLen = data->length();
-		size_t n {std::count(data->begin(), data->end(), NEWLINE)};
+		int64_t n {std::count(data->begin(), data->end(), NEWLINE)};
 		root->newLineCount = n;
 		root->data = std::move(data);
 		return;

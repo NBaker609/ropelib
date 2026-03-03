@@ -2,7 +2,7 @@
 #include "include/util.h"
 void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 {
-	const size_t newLineDelta {std::count(str.begin(), str.end(), NEWLINE)};
+	const int64_t newLineDelta {std::count(str.begin(), str.end(), NEWLINE)};
 	const std::optional<LeafIndex> nodeAtIndex {getLeafAtIndexInfo(i, root)};
 
 	if (!nodeAtIndex.has_value())
