@@ -35,6 +35,7 @@ namespace rope
 
 	void createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex);
 	void insertAtIndex(size_t i, RopeNode *root, std::string str);
+	void insertAtLocalIndex(size_t i, RopeNode *root, RopeNode *localNode, std::string str);
 	void deleteAtIndex(size_t i, RopeNode *root);
 	void setMaxLeafLen(size_t n);
 	
@@ -47,7 +48,7 @@ namespace rope
 	std::optional<LeafIndex> getLeafAtIndexInfo(size_t i, RopeNode *root);
 	std::optional<LeafIndex> getNextLeaf(RopeNode* leafToStart);
 	std::optional<LeafIndex> getNewLineAtIndex(size_t i, RopeNode* root);
-	
+
 }
 
 #endif

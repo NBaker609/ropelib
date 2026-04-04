@@ -1,5 +1,7 @@
 #include "../include/rope.h"
 #include "include/util.h"
+
+// TODO: Fix this abomination
 void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 {
 	const int64_t newLineDelta {std::count(str.begin(), str.end(), NEWLINE)};
@@ -14,6 +16,8 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 
 	if (nodeAtIndex->localIndex >= MAX_LEAF_LEN || leafNode->data->length() >= MAX_LEAF_LEN || leafNode->data->length() + str.length() >= MAX_LEAF_LEN)
 	{
+		i = nodeAtIndex->localIndex;
+
 		std::unique_ptr leftSideOfSplitNode {std::make_unique<RopeNode>()};
 		std::unique_ptr rightSideOfSplitNode {std::make_unique<RopeNode>()};
 
@@ -23,9 +27,103 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 		std::string leftSplitString {""};
 		std::string rightSplitString {""};
 
-		leftSplitString = leafNode->data->substr(0, nodeAtIndex->localIndex);
+		const size_t centerOfLeaf { leafNode->data->length()/2 };
+
+		leftSplitString = leafNode->data->substr(0, centerOfLeaf);
 		leftSideOfSplitNode->leftLen = leftSplitString.length();
-		rightSplitString = leafNode->data->substr(nodeAtIndex->localIndex, leafNode->data->length());
+
+		const size_t lineCount { std::count(leftSplitString.begin(), leftSplitString.end(), NEWLINE) };
+		leftSideOfSplitNode->newLineCount = lineCount;
+		
+		rightSplitString = leafNode->data->substr(centerOfLeaf);
+		
+		const size_t lineCoutRight { std::count(rightSplitString.begin(), rightSplitString.end(), NEWLINE) };
+		rightSideOfSplitNode->leftLen = rightSplitString.length();
+		rightSideOfSplitNode->newLineCount = lineCoutRight;
+
+		rightSideOfSplitNode->data = std::make_unique<std::string>(rightSplitString);
+		leftSideOfSplitNode->data = std::make_unique<std::string>(leftSplitString);
+		leafNode->data = nullptr;
+
+		if(i > leftSplitString.length())
+		{
+			i -= leftSplitString.length();
+			if(str.length() + rightSplitString.length() > MAX_LEAF_LEN)
+			{
+				rightSideOfSplitNode->data->insert(i, str);
+				createRope(*rightSideOfSplitNode->data, rightSideOfSplitNode, leafNode, 0, rightSplitString.length());
+				leafNode->leftNode = std::move(leftSideOfSplitNode);
+				leafNode->rightNode = std::move(rightSideOfSplitNode);
+				
+				leafNode->leftLen = leafNode->leftNode->leftLen;
+				leafNode->newLineCount = leafNode->leftNode->newLineCount;
+
+				adjustWeights(leafNode, str.length(), newLineDelta);
+				return;
+			}
+			rightSideOfSplitNode->data->insert(i, str);
+			leafNode->leftNode = std::move(leftSideOfSplitNode);
+			leafNode->rightNode = std::move(rightSideOfSplitNode);
+			leafNode->leftLen = leafNode->leftNode->leftLen;
+			leafNode->newLineCount = leafNode->leftNode->newLineCount;
+			adjustWeights(leafNode, str.length(), newLineDelta);
+			return;
+		}
+		else if(str.length() + leftSplitString.length() > MAX_LEAF_LEN)
+		{
+			leftSideOfSplitNode->data->insert(i, str);
+			createRope(*leftSideOfSplitNode->data, leftSideOfSplitNode, leafNode, 0, leftSplitString.length());
+			leafNode->leftNode = std::move(leftSideOfSplitNode);
+			leafNode->rightNode = std::move(rightSideOfSplitNode);
+			
+			leafNode->leftLen = leafNode->leftNode->leftLen;
+			leafNode->newLineCount = leafNode->leftNode->newLineCount;
+
+
+			adjustWeights(leafNode, str.length(), newLineDelta);
+			return;
+		}
+
+		leftSideOfSplitNode->data->insert(i, str);
+		leftSideOfSplitNode->leftLen += str.length();
+		leftSideOfSplitNode->newLineCount += newLineDelta;
+		leafNode->leftNode = std::move(leftSideOfSplitNode);
+		leafNode->rightNode = std::move(rightSideOfSplitNode);
+		leafNode->leftLen = leafNode->leftNode->leftLen;
+		leafNode->newLineCount = leafNode->leftNode->newLineCount;
+		adjustWeights(leafNode, str.length(), newLineDelta);
+
+		return;
+	}
+	leafNode->data->insert(i, str);
+	leafNode->leftLen += str.length();
+	leafNode->newLineCount += newLineDelta;
+	adjustWeights(leafNode->parent, str.length(), newLineDelta);
+}
+
+void rope::insertAtLocalIndex(size_t i, RopeNode *root, RopeNode *leafNode, std::string str)
+{
+	const int64_t newLineDelta {std::count(str.begin(), str.end(), NEWLINE)};
+
+	if (!leafNode || !root)
+	{
+		return;
+	}
+
+	if (i >= MAX_LEAF_LEN || leafNode->data->length() >= MAX_LEAF_LEN || leafNode->data->length() + str.length() >= MAX_LEAF_LEN)
+	{
+		std::unique_ptr leftSideOfSplitNode {std::make_unique<RopeNode>()};
+		std::unique_ptr rightSideOfSplitNode {std::make_unique<RopeNode>()};
+
+		leftSideOfSplitNode->parent = leafNode;
+		rightSideOfSplitNode->parent = leafNode;
+
+		std::string leftSplitString {""};
+		std::string rightSplitString {""};
+
+		leftSplitString = leafNode->data->substr(0, i);
+		leftSideOfSplitNode->leftLen = leftSplitString.length();
+		rightSplitString = leafNode->data->substr(i, leafNode->data->length());
 		leafNode->data->erase(leafNode->data->begin());
 		leftSideOfSplitNode->data = std::make_unique<std::string>(leftSplitString);
 		leafNode->data = nullptr;
@@ -33,7 +131,7 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 		if (str.length() + rightSplitString.length() > MAX_LEAF_LEN)
 		{
 			std::string rightHandString {str + rightSplitString};
-			createRope(rightHandString, rightSideOfSplitNode, nodeAtIndex->localNode, 0, rightHandString.length());
+			createRope(rightHandString, rightSideOfSplitNode, leafNode, 0, rightHandString.length());
 			leafNode->leftNode = std::move(leftSideOfSplitNode);
 			leafNode->rightNode = std::move(rightSideOfSplitNode);
 
@@ -52,12 +150,10 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 
 		return;
 	}
-	leafNode->data->insert(nodeAtIndex->localIndex, str);
+	leafNode->data->insert(i, str);
 	leafNode->leftLen += str.length();
 	adjustWeights(leafNode, str.length(), newLineDelta);
 }
-
-
 
 void rope::deleteAtIndex(size_t i, RopeNode *root)
 {

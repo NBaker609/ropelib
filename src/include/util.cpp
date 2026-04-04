@@ -38,8 +38,7 @@ void adjustWeights(rope::RopeNode *leaf, int32_t delta, int32_t newLineDelta)
 	if (parent->leftNode.get() == leaf)
 	{
 		parent->leftLen += delta;
-		parent->newLineCount += newLineDelta;
 	}
-
+	parent->newLineCount += newLineDelta;
 	adjustWeights(parent, delta, newLineDelta);
 }
