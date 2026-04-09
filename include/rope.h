@@ -7,8 +7,14 @@
 #include <algorithm>
 namespace rope
 {
-	inline const char  NEWLINE = '\n';
+	enum class INSERT_SPECIFIER
+	{
+		LOCAL_INSERT,
+		GLOBAL_INSERT
+	};
 
+	inline const char  NEWLINE = '\n';
+	 
 	inline size_t MAX_LEAF_LEN {100};
 
 	class RopeNode
@@ -34,8 +40,7 @@ namespace rope
 	};
 
 	void createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex);
-	void insertAtIndex(size_t i, RopeNode *root, std::string str);
-	void insertAtLocalIndex(size_t i, RopeNode *root, RopeNode *localNode, std::string str);
+	void insertAtIndex(size_t i, RopeNode *root, std::string str, INSERT_SPECIFIER IS = INSERT_SPECIFIER::GLOBAL_INSERT);
 	void deleteAtIndex(size_t i, RopeNode *root);
 	void setMaxLeafLen(size_t n);
 	

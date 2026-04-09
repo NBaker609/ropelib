@@ -2,17 +2,26 @@
 #include "include/util.h"
 
 // TODO: Fix this abomination
-void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
+void rope::insertAtIndex(size_t i, RopeNode *root, std::string str, INSERT_SPECIFIER IS)
 {
 	const int64_t newLineDelta {std::count(str.begin(), str.end(), NEWLINE)};
-	const std::optional<LeafIndex> nodeAtIndex {getLeafAtIndexInfo(i, root)};
-
+	std::optional<LeafIndex> nodeAtIndex {}; 
+	RopeNode* leafNode {};
+	if(IS != INSERT_SPECIFIER::LOCAL_INSERT)
+	{
+	 	nodeAtIndex = getLeafAtIndexInfo(i, root);
+		leafNode = nodeAtIndex->localNode;
+	}
+	else
+	{
+		nodeAtIndex = std::make_optional<LeafIndex>();
+		nodeAtIndex.value().localIndex = i;
+		leafNode = root;
+	}
 	if (!nodeAtIndex.has_value())
 	{
 		return;
 	}
-
-	RopeNode *leafNode {nodeAtIndex->localNode};
 
 	if (nodeAtIndex->localIndex >= MAX_LEAF_LEN || leafNode->data->length() >= MAX_LEAF_LEN || leafNode->data->length() + str.length() >= MAX_LEAF_LEN)
 	{
@@ -99,60 +108,6 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str)
 	leafNode->leftLen += str.length();
 	leafNode->newLineCount += newLineDelta;
 	adjustWeights(leafNode->parent, str.length(), newLineDelta);
-}
-
-void rope::insertAtLocalIndex(size_t i, RopeNode *root, RopeNode *leafNode, std::string str)
-{
-	const int64_t newLineDelta {std::count(str.begin(), str.end(), NEWLINE)};
-
-	if (!leafNode || !root)
-	{
-		return;
-	}
-
-	if (i >= MAX_LEAF_LEN || leafNode->data->length() >= MAX_LEAF_LEN || leafNode->data->length() + str.length() >= MAX_LEAF_LEN)
-	{
-		std::unique_ptr leftSideOfSplitNode {std::make_unique<RopeNode>()};
-		std::unique_ptr rightSideOfSplitNode {std::make_unique<RopeNode>()};
-
-		leftSideOfSplitNode->parent = leafNode;
-		rightSideOfSplitNode->parent = leafNode;
-
-		std::string leftSplitString {""};
-		std::string rightSplitString {""};
-
-		leftSplitString = leafNode->data->substr(0, i);
-		leftSideOfSplitNode->leftLen = leftSplitString.length();
-		rightSplitString = leafNode->data->substr(i, leafNode->data->length());
-		leafNode->data->erase(leafNode->data->begin());
-		leftSideOfSplitNode->data = std::make_unique<std::string>(leftSplitString);
-		leafNode->data = nullptr;
-
-		if (str.length() + rightSplitString.length() > MAX_LEAF_LEN)
-		{
-			std::string rightHandString {str + rightSplitString};
-			createRope(rightHandString, rightSideOfSplitNode, leafNode, 0, rightHandString.length());
-			leafNode->leftNode = std::move(leftSideOfSplitNode);
-			leafNode->rightNode = std::move(rightSideOfSplitNode);
-
-			leafNode->leftLen = leftSplitString.length();
-			adjustWeights(leafNode, str.length(), newLineDelta);
-
-			return;
-		}
-
-		rightSideOfSplitNode->data = std::make_unique<std::string>(str + rightSplitString);
-		leafNode->leftNode = std::move(leftSideOfSplitNode);
-		leafNode->rightNode = std::move(rightSideOfSplitNode);
-
-		leafNode->leftLen = leftSplitString.length();
-		adjustWeights(leafNode, str.length(), newLineDelta);
-
-		return;
-	}
-	leafNode->data->insert(i, str);
-	leafNode->leftLen += str.length();
-	adjustWeights(leafNode, str.length(), newLineDelta);
 }
 
 void rope::deleteAtIndex(size_t i, RopeNode *root)
