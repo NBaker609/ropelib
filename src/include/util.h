@@ -2,4 +2,5 @@
 #include "../../include/rope.h"
 
 std::optional<rope::LeafIndex> searchDownLeftTree(rope::RopeNode *nodeToStart);
+std::optional<rope::LeafIndex> searchDownRightTree(rope::RopeNode *nodeToStart);
 void adjustWeights(rope::RopeNode *leaf, int32_t delta, int32_t newLineDelta);

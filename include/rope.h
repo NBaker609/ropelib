@@ -52,6 +52,7 @@ namespace rope
 	std::optional<std::string> getLine(size_t i, RopeNode* root);
 	std::optional<LeafIndex> getLeafAtIndexInfo(size_t i, RopeNode *root);
 	std::optional<LeafIndex> getNextLeaf(RopeNode* leafToStart);
+	std::optional<LeafIndex> getPrevLeaf(RopeNode* leafToStart);
 	std::optional<LeafIndex> getNewLineAtIndex(size_t i, RopeNode* root);
 
 }

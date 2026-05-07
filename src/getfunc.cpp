@@ -210,3 +210,30 @@ std::optional<rope::LeafIndex> rope::getNextLeaf(RopeNode *leafToStart)
 	}
 	return std::nullopt;
 }
+
+std::optional<rope::LeafIndex> rope::getPrevLeaf(RopeNode *leafToStart)
+{
+	RopeNode *parent {leafToStart->parent};
+	if (parent == nullptr)
+		return std::nullopt;
+	if (parent->leftNode.get() == leafToStart)
+	{
+		return getPrevLeaf(parent);
+	}
+	if (parent->rightNode.get() == leafToStart)
+	{
+		RopeNode *parentsLeftChild {parent->leftNode.get()};
+
+		if (parentsLeftChild == nullptr)
+			return rope::getPrevLeaf(parent);
+
+		std::optional<LeafIndex> leafWalkedDownRight {searchDownRightTree(parentsLeftChild)};
+		while (true)
+		{
+			return leafWalkedDownRight;
+		}
+
+		return leafWalkedDownRight;
+	}
+	return std::nullopt;
+}

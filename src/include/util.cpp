@@ -1,4 +1,5 @@
 #include "util.h"
+
 std::optional<rope::LeafIndex> searchDownLeftTree(rope::RopeNode *nodeToStart)
 {
 	rope::RopeNode *curNode {nodeToStart};
@@ -8,6 +9,29 @@ std::optional<rope::LeafIndex> searchDownLeftTree(rope::RopeNode *nodeToStart)
 			curNode = curNode->leftNode.get();
 		else
 			curNode = curNode->rightNode.get();
+	}
+	if (!curNode)
+	{
+		return std::nullopt;
+	}
+
+	rope::LeafIndex leafInfoToReturn;
+	leafInfoToReturn.localNode = curNode;
+	leafInfoToReturn.characterAtIndex = curNode->data->at(0);
+	leafInfoToReturn.localIndex = 0;
+
+	return leafInfoToReturn;
+}
+
+std::optional<rope::LeafIndex> searchDownRightTree(rope::RopeNode *nodeToStart)
+{
+	rope::RopeNode *curNode {nodeToStart};
+	while (curNode && curNode->data == nullptr)
+	{
+		if (curNode->rightNode)
+			curNode = curNode->rightNode.get();
+		else
+			curNode = curNode->leftNode.get();
 	}
 	if (!curNode)
 	{
