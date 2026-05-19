@@ -137,7 +137,7 @@ std::optional<rope::LeafIndex> rope::getNewLineAtIndex(size_t i, RopeNode *root)
 	}
 	if (root->leftNode == nullptr && root->rightNode == nullptr)
 	{
-		if (i > root->newLineCount)
+		if (i > root->newLineCount || root->data->empty())
 			return std::nullopt;
 
 		size_t numOfNewLinesFound {0};
