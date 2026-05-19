@@ -110,11 +110,17 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str, INSERT_SPECI
 	adjustWeights(leafNode->parent, str.length(), newLineDelta);
 }
 
-void rope::deleteAtIndex(size_t i, RopeNode *root)
+void rope::deleteAtIndex(size_t i, RopeNode *root, INSERT_SPECIFIER IS)
 {
-	std::optional<LeafIndex> leafAtIndex {getLeafAtIndexInfo(i, root)};
+	std::optional<LeafIndex> leafAtIndex { getLeafAtIndexInfo(i, root) };
 	if (!leafAtIndex.has_value())
 		return;
+
+	if(IS == INSERT_SPECIFIER::LOCAL_INSERT)
+	{
+		leafAtIndex->localNode = root;
+		leafAtIndex->characterAtIndex = root->data->at(i);
+	}
 
 	RopeNode *leafNode {leafAtIndex.value().localNode};
 	int weightDelta {-1};
@@ -124,6 +130,8 @@ void rope::deleteAtIndex(size_t i, RopeNode *root)
 
 	adjustWeights(leafNode, weightDelta, newLineDelta);
 	leafNode->data->erase(leafAtIndex->localIndex, 1);
+	leafNode->leftLen += weightDelta;
+	leafNode->newLineCount += newLineDelta;
 	if (leafNode->data->empty())
 	{
 		if (leafNode->parent == nullptr)

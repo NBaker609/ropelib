@@ -41,7 +41,7 @@ namespace rope
 
 	void createRope(std::string &str, std::unique_ptr<RopeNode> &root, RopeNode *parent, size_t leftIndex, size_t rightIndex);
 	void insertAtIndex(size_t i, RopeNode *root, std::string str, INSERT_SPECIFIER IS = INSERT_SPECIFIER::GLOBAL_INSERT);
-	void deleteAtIndex(size_t i, RopeNode *root);
+	void deleteAtIndex(size_t i, RopeNode *root, INSERT_SPECIFIER IS);
 	void setMaxLeafLen(size_t n);
 	
 	std::string getRopeAsString(RopeNode *root);

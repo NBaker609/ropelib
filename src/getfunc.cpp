@@ -143,6 +143,11 @@ std::optional<rope::LeafIndex> rope::getNewLineAtIndex(size_t i, RopeNode *root)
 		size_t numOfNewLinesFound {0};
 		for (size_t index {0}; index < root->data->length(); ++index)
 		{
+			if(i == 0)
+			{
+				numOfNewLinesFound = 0;
+				break;
+			}
 			if (root->data->at(index) == NEWLINE)
 			{
 				numOfNewLinesFound++;
