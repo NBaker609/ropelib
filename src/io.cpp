@@ -107,7 +107,7 @@ void rope::insertAtIndex(size_t i, RopeNode *root, std::string str, INSERT_SPECI
 	leafNode->data->insert(i, str);
 	leafNode->leftLen += str.length();
 	leafNode->newLineCount += newLineDelta;
-	adjustWeights(leafNode->parent, str.length(), newLineDelta);
+	adjustWeights(leafNode, str.length(), newLineDelta);
 }
 
 void rope::deleteAtIndex(size_t i, RopeNode *root, INSERT_SPECIFIER IS)

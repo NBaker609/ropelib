@@ -59,7 +59,14 @@ std::optional<std::string> rope::getLine(size_t i, RopeNode *root)
 	{
 		return std::nullopt;
 	}
-
+	if(i == 0)
+	{
+		size_t firstNewLine = lineStartingPoint->localNode->data->find('\n');
+		if(firstNewLine == std::string::npos)
+			return *lineStartingPoint->localNode->data;
+		
+		return std::string(lineStartingPoint->localNode->data->substr(0, firstNewLine));
+	}
 	int index {0};
 	if (lineStartingPoint->characterAtIndex == NEWLINE)
 		index = lineStartingPoint->localIndex + 1;
@@ -116,11 +123,11 @@ std::optional<rope::LeafIndex> rope::getLeafAtIndexInfo(size_t i, RopeNode *root
 		leafInfo.localNode = root;
 		return leafInfo;
 	}
-	if (root->leftLen > i && root->leftNode.get() != nullptr)
+	if (root->leftLen >= i && root->leftNode.get() != nullptr)
 	{
 		return getLeafAtIndexInfo(i, root->leftNode.get());
 	}
-	else if (root->leftLen <= i && root->rightNode.get() != nullptr)
+	else if (root->leftLen < i && root->rightNode.get() != nullptr)
 	{
 		const size_t newIndex {i - root->leftLen};
 		return getLeafAtIndexInfo(newIndex, root->rightNode.get());
